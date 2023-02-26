@@ -1,0 +1,52 @@
+Import statements
+	- Metawear stuff
+	- JSON stuff
+	- bluetooth stuff
+	- some kind of mutex stuff
+	- graceful shutdown
+
+declare class data_mw:
+	bool is_valid (false by default)
+	string location
+	actual data
+	
+declare global hashmap of data_mw.
+	- keys are their MAC address
+	
+callback (MAC, sensor_data):
+	wait until hashmap is unlocked.
+	lock hashmap
+	hashmap[MAC].is_valid = true
+	hashmap[MAC].data = sensor_data
+	unlock hashmap
+
+on_disconnect:
+	if hashmap is locked, set is_valid for MAC to false and unlock
+	while(not_connected):
+		try to connect
+		wait 10s
+	
+Read sensor MAC file:
+	- File should be in format:
+		"'bodyLocation' 'MAC address'\n..."
+	- One line per sensor.
+Load the sensor MAC file into the hashmap. init all is_valid values to
+alse, and all the data to 0 or whatever.
+
+Do the metawear config stuff to set up each sensor connection. Link
+them to the callback function. **Give the callback function the MAC of
+the sensor.
+
+try:
+	while(1):
+		sleep(1s)
+		wait until hashmap is unlocked
+		lock hashmap
+		for entry in hashmap:
+			put the entry into the collective json
+			set entry is_valid to false
+		unlock hashmap
+		timestamp json
+		serial write json
+catch(exit):
+	disconnect all of the sensors before closing.
