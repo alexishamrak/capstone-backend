@@ -1,10 +1,12 @@
+# run sudo hcitool dev to find which hci is in use (x)
+# You must execute this command in terminal first: sudo hciconfig hcix piscan
+
 from __future__ import print_function
 from mbientlab.metawear import *
 from time import sleep
 from threading import Event
 import json
 import time
-import serial
 import platform
 import sys
 from graceful_shutdown import ShutdownProtection
@@ -31,10 +33,6 @@ class State:
         print("%s -> %s" % (self.location, json_data))
         # Write the json to the bluetooth client socket
         client_sock.send(json_data)
- #       ser.write(data)
- #       ser.flush()
- #       ser.close()
- #       self.samples+= 1
         
     def disconnect_function(self):
         while not(device.is_connected):
@@ -52,8 +50,6 @@ def disconnect_recovery(device):
         if res == None:
             break
         sleep(5.0)
-        
-#ser = serial.Serial(port="/dev/usb/hiddev0", baudrate= 9600, bytesize=serial.EIGHTBITS)
 
 # Open a bluetooth server on the pi for the desktop app to pair with
 server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -113,7 +109,6 @@ except (SystemExit, KeyboardInterrupt, OSError) as ex:
     client_sock.close()
     server_sock.close()
   
-#    ser.close()
     
     for s in states:
         libmetawear.mbl_mw_acc_stop(s.device.board)
