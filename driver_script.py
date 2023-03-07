@@ -1,10 +1,12 @@
+# run "sudo hcitool dev" to find which hci is in use (x)
+# You must execute this command in terminal first: "sudo hciconfig hcix piscan"
+
 from __future__ import print_function
 from mbientlab.metawear import *
 from time import sleep
 from threading import Event
 import json
 import time
-import serial
 import platform
 import sys
 from graceful_shutdown import ShutdownProtection
@@ -31,13 +33,9 @@ class State:
         print("%s -> %s" % (self.location, json_data))
         # Write the json to the bluetooth client socket
         client_sock.send(json_data)
- #       ser.write(data)
- #       ser.flush()
- #       ser.close()
- #       self.samples+= 1
         
     def disconnect_function(self):
-        while not(device.is_connected):
+        while not(self.device.is_connected):
             print("Attempting to re-establish connection with " + self.locaiton)
             self.device.connect()
             sleep(5.0)
@@ -52,22 +50,21 @@ def disconnect_recovery(device):
         if res == None:
             break
         sleep(5.0)
-        
-#ser = serial.Serial(port="/dev/usb/hiddev0", baudrate= 9600, bytesize=serial.EIGHTBITS)
 
 # Open a bluetooth server on the pi for the desktop app to pair with
 server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 server_sock.bind(("",bluetooth.PORT_ANY))
 server_sock.listen(1)
 port = server_sock.getsockname()[1]
+print(port)
 uuid = "e63edc34-5ba6-4764-9c00-6c14249597f6"
-bluetooth.advertise_service(server_sock, "HubServer", service_id=uuid,
+bluetooth.advertise_service(server_sock, name="HubServer", service_id=uuid,
                             service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
-                            profiles=[bluetooth.SERIAL_PORT_PROFILE]#,
-                            #provider="JoshsPi"
+                            #profiles=[bluetooth.SERIAL_PORT_PROFILE]#,
                             )
 print("Waiting for connection with desktop app")
 client_sock, client_info = server_sock.accept()
+client_sock.send("Hello from the pi")
 print("Established connection with desktop app")
 
 # Open and read the sensor identifier info from the config file
@@ -113,7 +110,6 @@ except (SystemExit, KeyboardInterrupt, OSError) as ex:
     client_sock.close()
     server_sock.close()
   
-#    ser.close()
     
     for s in states:
         libmetawear.mbl_mw_acc_stop(s.device.board)
