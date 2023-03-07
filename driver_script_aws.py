@@ -1,16 +1,15 @@
-# run "sudo hcitool dev" to find which hci is in use (x)
-# You must execute this command in terminal first: "sudo hciconfig hcix piscan"
+# the aws related code comes from here: https://aws.amazon.com/premiumsupport/knowledge-center/iot-core-publish-mqtt-messages-python/
 
 from __future__ import print_function
 from mbientlab.metawear import *
-from time import sleep
+import time
 from threading import Event
 import json
 import time
 import platform
 import sys
 from graceful_shutdown import ShutdownProtection
-import bluetooth
+import AWSIoTPythonSDK.MQTTLib as AWSIoTPyMQTT
 
 class State:
     def __init__(self, device, location):
@@ -31,16 +30,17 @@ class State:
         }
         json_data = json.dumps(json_intermediary)
         print("%s -> %s" % (self.location, json_data))
-        # Write the json to the bluetooth client socket
-        client_sock.send(json_data)
+        # Write json to aws
+        aws_client.publish(TOPIC, json_data, 1)
         
+    # depending on a test that I wish to run, this function may get removed -josh
     def disconnect_function(self):
         while not(self.device.is_connected):
             print("Attempting to re-establish connection with " + self.locaiton)
             self.device.connect()
             sleep(5.0)
             
-            
+# depending on a test that I wish to run, this function may get removed -josh
 def disconnect_recovery(device):
     print(device.is_connected)
     while not(device.is_connected):
@@ -51,21 +51,18 @@ def disconnect_recovery(device):
             break
         sleep(5.0)
 
-# Open a bluetooth server on the pi for the desktop app to pair with
-server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-server_sock.bind(("",bluetooth.PORT_ANY))
-server_sock.listen(1)
-port = server_sock.getsockname()[1]
-print(port)
-uuid = "e63edc34-5ba6-4764-9c00-6c14249597f6"
-bluetooth.advertise_service(server_sock, name="HubServer", service_id=uuid,
-                            service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
-                            #profiles=[bluetooth.SERIAL_PORT_PROFILE]#,
-                            )
-print("Waiting for connection with desktop app")
-client_sock, client_info = server_sock.accept()
-client_sock.send("Hello from the pi")
-print("Established connection with desktop app")
+# *These need to be checked by someone who knows what they are doing.* -josh
+ENDPOINT = "URL required"
+CLIENT_ID = "Client id required"
+PATH_TO_CERTIFICATE = "Path required"
+PATH_TO_PRIVATE_KEY = "Path required"
+PATH_TO_AMAZON_ROOT_CA_1 = "Path required"
+TOPIC = "Topic needs to be decided on"
+
+aws_client = AWSIoTPyMQTT.AWSIoTMQTTClient(CLIENT_ID)
+aws_client.configureEndpoint(ENDPOINT, 8883)
+aws_client.configureCredentials(PATH_TO_AMAZON_ROOT_CA_1, PATH_TO_PRIVATE_KEY, PATH_TO_CERTIFICATE)
+
 
 # Open and read the sensor identifier info from the config file
 # line: "loctation MAC"
@@ -85,7 +82,7 @@ for line in f:
 f.close()
 
 try:
-
+    aws_client.connect()
     for s in states: #Configure the devices to record data
         print("Configuring device")
         libmetawear.mbl_mw_settings_set_connection_parameters(s.device.board, 7.5, 7.5, 0, 6000)
@@ -102,14 +99,17 @@ try:
         libmetawear.mbl_mw_acc_start(s.device.board)
 
     while True:
-        sleep(10.0)
+        sleep(5.0)
+        # The following loop has to do with a test that I want to run soon. It should not make it to production. -josh
+        for s in states:
+            print("Device: ", s.location, " is_connected =")
+            print(s.device.is_connected)
 
 except (SystemExit, KeyboardInterrupt, OSError) as ex:
     # When the program is closed, close up all of the open resources and
     # exit
-    client_sock.close()
-    server_sock.close()
   
+    aws_client.on_disconnect()
     
     for s in states:
         libmetawear.mbl_mw_acc_stop(s.device.board)
