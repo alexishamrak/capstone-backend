@@ -1,5 +1,5 @@
-# run sudo hcitool dev to find which hci is in use (x)
-# You must execute this command in terminal first: sudo hciconfig hcix piscan
+# run "sudo hcitool dev" to find which hci is in use (x)
+# You must execute this command in terminal first: "sudo hciconfig hcix piscan"
 
 from __future__ import print_function
 from mbientlab.metawear import *
@@ -35,7 +35,7 @@ class State:
         client_sock.send(json_data)
         
     def disconnect_function(self):
-        while not(device.is_connected):
+        while not(self.device.is_connected):
             print("Attempting to re-establish connection with " + self.locaiton)
             self.device.connect()
             sleep(5.0)
@@ -56,14 +56,15 @@ server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 server_sock.bind(("",bluetooth.PORT_ANY))
 server_sock.listen(1)
 port = server_sock.getsockname()[1]
+print(port)
 uuid = "e63edc34-5ba6-4764-9c00-6c14249597f6"
-bluetooth.advertise_service(server_sock, "HubServer", service_id=uuid,
+bluetooth.advertise_service(server_sock, name="HubServer", service_id=uuid,
                             service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
-                            profiles=[bluetooth.SERIAL_PORT_PROFILE]#,
-                            #provider="JoshsPi"
+                            #profiles=[bluetooth.SERIAL_PORT_PROFILE]#,
                             )
 print("Waiting for connection with desktop app")
 client_sock, client_info = server_sock.accept()
+client_sock.send("Hello from the pi")
 print("Established connection with desktop app")
 
 # Open and read the sensor identifier info from the config file
