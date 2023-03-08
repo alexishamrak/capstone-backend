@@ -10,13 +10,16 @@ import time
 import platform
 import sys
 from graceful_shutdown import ShutdownProtection
-import bluetooth
+#import bluetooth
+
+total_samples = 0
+start_time = end_time = 0
 
 class State:
     def __init__(self, device, location):
         self.location = location
         self.device = device
-        self.device.on_disconnect = FnVoid_VoidP_DataP(self.disconnect_function)
+        #self.device.on_disconnect = lambda end_program: end_time = time.time()
         self.samples = 0
         self.callback = FnVoid_VoidP_DataP(self.data_handler)
 
@@ -30,15 +33,18 @@ class State:
             "z" : parse_value(data).z
         }
         json_data = json.dumps(json_intermediary)
-        print("%s -> %s" % (self.location, json_data))
+        #print("%s -> %s" % (self.location, json_data))
         # Write the json to the bluetooth client socket
-        client_sock.send(json_data)
+        global total_samples
+        total_samples += 1
         
     def disconnect_function(self):
         while not(self.device.is_connected):
-            print("Attempting to re-establish connection with " + self.locaiton)
-            self.device.connect()
-            sleep(5.0)
+            print("Lost connection")
+            global end_time
+            end_time = time.time()
+            print(end_time)
+            exit()
             
             
 def disconnect_recovery(device):
@@ -50,22 +56,6 @@ def disconnect_recovery(device):
         if res == None:
             break
         sleep(5.0)
-
-# Open a bluetooth server on the pi for the desktop app to pair with
-server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-server_sock.bind(("",bluetooth.PORT_ANY))
-server_sock.listen(1)
-port = server_sock.getsockname()[1]
-print(port)
-uuid = "e63edc34-5ba6-4764-9c00-6c14249597f6"
-bluetooth.advertise_service(server_sock, name="HubServer", service_id=uuid,
-                            service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
-                            #profiles=[bluetooth.SERIAL_PORT_PROFILE]#,
-                            )
-print("Waiting for connection with desktop app")
-client_sock, client_info = server_sock.accept()
-client_sock.send("Hello from the pi")
-print("Established connection with desktop app")
 
 # Open and read the sensor identifier info from the config file
 # line: "loctation MAC"
@@ -100,17 +90,22 @@ try:
 
         libmetawear.mbl_mw_acc_enable_acceleration_sampling(s.device.board)
         libmetawear.mbl_mw_acc_start(s.device.board)
-
+    print("Starting")
+    start_time = time.time()
+    print(start_time)
     while True:
         sleep(10.0)
+        print("Total samples: ", total_samples)
+        for s in states:
+            if s.device.is_connected == False:
+                exit(1)
+            print(s.location, ": ", s.device.is_connected)
 
 except (SystemExit, KeyboardInterrupt, OSError) as ex:
     # When the program is closed, close up all of the open resources and
     # exit
-    client_sock.close()
-    server_sock.close()
-  
-    
+    end_time = time.time()
+    print("seconds ran: ", (end_time - start_time))
     for s in states:
         libmetawear.mbl_mw_acc_stop(s.device.board)
         libmetawear.mbl_mw_acc_disable_acceleration_sampling(s.device.board)
@@ -119,6 +114,4 @@ except (SystemExit, KeyboardInterrupt, OSError) as ex:
         libmetawear.mbl_mw_datasignal_unsubscribe(signal)
         libmetawear.mbl_mw_debug_disconnect(s.device.board)
 
-    print("Total Samples Received")
-    for s in states:
-        print("%s -> %d" % (s.device.address, s.samples))
+    
