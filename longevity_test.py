@@ -10,6 +10,7 @@ import time
 import platform
 import sys
 from graceful_shutdown import ShutdownProtection
+import datetime
 #import bluetooth
 
 total_samples = 0
@@ -96,6 +97,7 @@ try:
     while True:
         sleep(10.0)
         print("Total samples: ", total_samples)
+        print("Time running: ", time.strftime("%Hh:%Mm:%Ss",time.gmtime(time.time()-start_time)))
         for s in states:
             if s.device.is_connected == False:
                 exit(1)
@@ -105,7 +107,7 @@ except (SystemExit, KeyboardInterrupt, OSError) as ex:
     # When the program is closed, close up all of the open resources and
     # exit
     end_time = time.time()
-    print("seconds ran: ", (end_time - start_time))
+    print("time ran: ", time.strftime("%Hh:%Mm:%Ss",time.gmtime(end_time - start_time)))
     for s in states:
         libmetawear.mbl_mw_acc_stop(s.device.board)
         libmetawear.mbl_mw_acc_disable_acceleration_sampling(s.device.board)

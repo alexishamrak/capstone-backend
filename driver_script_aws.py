@@ -2,10 +2,10 @@
 
 from __future__ import print_function
 from mbientlab.metawear import *
+from time import sleep
 import time
 from threading import Event
 import json
-import time
 import platform
 import sys
 from graceful_shutdown import ShutdownProtection
@@ -15,7 +15,7 @@ class State:
     def __init__(self, device, location):
         self.location = location
         self.device = device
-        self.device.on_disconnect = FnVoid_VoidP_DataP(self.disconnect_function)
+        #self.device.on_disconnect = FnVoid_VoidP_DataP(self.disconnect_function)
         self.samples = 0
         self.callback = FnVoid_VoidP_DataP(self.data_handler)
 
@@ -28,6 +28,7 @@ class State:
             "y" : parse_value(data).y,
             "z" : parse_value(data).z
         }
+        global TOPIC
         json_data = json.dumps(json_intermediary)
         print("%s -> %s" % (self.location, json_data))
         # Write json to aws
@@ -52,12 +53,12 @@ def disconnect_recovery(device):
         sleep(5.0)
 
 # *These need to be checked by someone who knows what they are doing.* -josh
-ENDPOINT = "URL required"
-CLIENT_ID = "Client id required"
-PATH_TO_CERTIFICATE = "Path required"
-PATH_TO_PRIVATE_KEY = "Path required"
-PATH_TO_AMAZON_ROOT_CA_1 = "Path required"
-TOPIC = "Topic needs to be decided on"
+ENDPOINT = "a2yj29llu7rbln-ats.iot.ca-central-1.amazonaws.com"
+CLIENT_ID = "testDevice"
+PATH_TO_CERTIFICATE = "aws_files/d9704a03ad1d01fa48eb96456b0333ca9525da8252c308d0ba8a08b703e07578-certificate.pem.crt"
+PATH_TO_PRIVATE_KEY = "aws_files/d9704a03ad1d01fa48eb96456b0333ca9525da8252c308d0ba8a08b703e07578-private.pem.key"
+PATH_TO_AMAZON_ROOT_CA_1 = "aws_files/root-CA.crt"
+TOPIC = "sensor-data"
 
 aws_client = AWSIoTPyMQTT.AWSIoTMQTTClient(CLIENT_ID)
 aws_client.configureEndpoint(ENDPOINT, 8883)
