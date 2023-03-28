@@ -100,16 +100,17 @@ try:
         libmetawear.mbl_mw_acc_start(s.device.board)
 
     while True:
-        sleep(5.0)
+        # The sleep is not a multiple of 1.0s because this way it is less likely to interrupt a data publish.
+        sleep(9.5)
         # The following loop has to do with a test that I want to run soon. It should not make it to production. -josh
         for s in states:
-            print("Device: ", s.location, " is_connected =")
-            print(s.device.is_connected)
+            if not s.device.is_connected:
+                sys.exit("lost sensor connection")
 
 except (SystemExit, KeyboardInterrupt, OSError) as ex:
     # When the program is closed, close up all of the open resources and
     # exit
-  
+    aws_client.publish(TOPIC, "Stream terminating", 1)
     aws_client.on_disconnect()
     
     for s in states:
