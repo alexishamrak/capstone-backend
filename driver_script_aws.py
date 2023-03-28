@@ -15,7 +15,6 @@ class State:
     def __init__(self, device, location):
         self.location = location
         self.device = device
-        #self.device.on_disconnect = FnVoid_VoidP_DataP(self.disconnect_function)
         self.samples = 0
         self.callback = FnVoid_VoidP_DataP(self.data_handler)
 
@@ -34,23 +33,6 @@ class State:
         # Write json to aws
         aws_client.publish(TOPIC, json_data, 1)
         
-    # depending on a test that I wish to run, this function may get removed -josh
-    def disconnect_function(self):
-        while not(self.device.is_connected):
-            print("Attempting to re-establish connection with " + self.locaiton)
-            self.device.connect()
-            sleep(5.0)
-            
-# depending on a test that I wish to run, this function may get removed -josh
-def disconnect_recovery(device):
-    print(device.is_connected)
-    while not(device.is_connected):
-        print("Attempting reconnect for " + device.address)
-        res = device.connect()
-        print(res)
-        if res == None:
-            break
-        sleep(5.0)
 
 # *These need to be checked by someone who knows what they are doing.* -josh
 ENDPOINT = "a2yj29llu7rbln-ats.iot.ca-central-1.amazonaws.com"
@@ -110,17 +92,13 @@ try:
 except (SystemExit, KeyboardInterrupt, OSError) as ex:
     # When the program is closed, close up all of the open resources and
     # exit
-    aws_client.publish(TOPIC, "Stream terminating", 1)
-    aws_client.on_disconnect()
+    aws_client.publish(TOPIC, json.dumps("Stream terminating"), 1)
+    sleep(1.0)
+    aws_client.publish(TOPIC, json.dumps("Stream terminating"), 1)
+    print(json.dumps("Stream terminating"))
+    aws_client.disconnect()
     
     for s in states:
-        libmetawear.mbl_mw_acc_stop(s.device.board)
-        libmetawear.mbl_mw_acc_disable_acceleration_sampling(s.device.board)
+        s.device.disconnect()
 
-        signal = libmetawear.mbl_mw_acc_get_acceleration_data_signal(s.device.board)
-        libmetawear.mbl_mw_datasignal_unsubscribe(signal)
-        libmetawear.mbl_mw_debug_disconnect(s.device.board)
-
-    print("Total Samples Received")
-    for s in states:
-        print("%s -> %d" % (s.device.address, s.samples))
+    print("Stream terminated")
