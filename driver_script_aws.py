@@ -92,13 +92,13 @@ try:
 except (SystemExit, KeyboardInterrupt, OSError) as ex:
     # When the program is closed, close up all of the open resources and
     # exit
+    for s in states:
+        s.device.disconnect()
     aws_client.publish(TOPIC, json.dumps("Stream terminating"), 1)
     sleep(1.0)
     aws_client.publish(TOPIC, json.dumps("Stream terminating"), 1)
     print(json.dumps("Stream terminating"))
     aws_client.disconnect()
     
-    for s in states:
-        s.device.disconnect()
 
     print("Stream terminated")
